@@ -116,6 +116,8 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
         ctx = cipher.encrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT)
     else:
         ctx = cipher.encrypt_ctx
+        res = backend._lib.EVP_CIPHER_CTX_reset(ctx)
+        backend.openssl_assert(res != 0)
     _aead_nonce(backend, ctx, nonce, _ENCRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
@@ -150,6 +152,8 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
         ctx = cipher.decrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT)
     else:
         ctx = cipher.decrypt_ctx
+        res = backend._lib.EVP_CIPHER_CTX_reset(ctx)
+        backend.openssl_assert(res != 0)        
     _aead_nonce(backend, ctx, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error

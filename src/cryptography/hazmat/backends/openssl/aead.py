@@ -25,8 +25,7 @@ def _aead_cipher_name(cipher):
         assert isinstance(cipher, AESGCM)
         return "aes-{}-gcm".format(len(cipher._key) * 8).encode("ascii")
 
-
-def _aead_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
+def _aead_ctx_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
     evp_cipher = backend._lib.EVP_get_cipherbyname(cipher_name)
     backend.openssl_assert(evp_cipher != backend._ffi.NULL)
     ctx = backend._lib.EVP_CIPHER_CTX_new()
@@ -59,7 +58,10 @@ def _aead_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
             ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, tag_len, backend._ffi.NULL
         )
         backend.openssl_assert(res != 0)
+    return ctx
 
+
+def _aead_setup(backend, ctx, key, nonce, operation):
     nonce_ptr = backend._ffi.from_buffer(nonce)
     key_ptr = backend._ffi.from_buffer(key)
     res = backend._lib.EVP_CipherInit_ex(
@@ -71,7 +73,6 @@ def _aead_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
         int(operation == _ENCRYPT),
     )
     backend.openssl_assert(res != 0)
-    return ctx
 
 
 def _set_length(backend, ctx, data_len):
@@ -102,9 +103,13 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
     from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_setup(
-        backend, cipher_name, cipher._key, nonce, None, tag_length, _ENCRYPT
-    )
+    if not cipher.encrypt_ctx:
+        ctx = cipher.encrypt_ctx = _aead_ctx_setup(
+            backend, cipher_name, cipher._key, nonce, None, tag_length, _ENCRYPT
+        )
+    else:
+        ctx = cipher.encrypt_ctx
+    _aead_setup(backend, ctx, cipher._key, nonce, _ENCRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):
@@ -134,9 +139,13 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     tag = data[-tag_length:]
     data = data[:-tag_length]
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_setup(
-        backend, cipher_name, cipher._key, nonce, tag, tag_length, _DECRYPT
-    )
+    if not cipher.decrypt_ctx:
+        ctx = cipher.decrypt_ctx = _aead_ctx_setup(
+            backend, cipher_name, cipher._key, nonce, tag, tag_length, _DECRYPT
+        )
+    else:
+        ctx = cipher.decrypt_ctx
+    _aead_setup(backend, ctx, cipher._key, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):

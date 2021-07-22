@@ -25,7 +25,7 @@ def _aead_cipher_name(cipher):
         assert isinstance(cipher, AESGCM)
         return "aes-{}-gcm".format(len(cipher._key) * 8).encode("ascii")
 
-def _aead_ctx_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
+def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
     evp_cipher = backend._lib.EVP_get_cipherbyname(cipher_name)
     backend.openssl_assert(evp_cipher != backend._ffi.NULL)
     ctx = backend._lib.EVP_CIPHER_CTX_new()
@@ -40,13 +40,6 @@ def _aead_ctx_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
     )
     backend.openssl_assert(res != 0)
     res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
-    backend.openssl_assert(res != 0)
-    res = backend._lib.EVP_CIPHER_CTX_ctrl(
-        ctx,
-        backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
-        len(nonce),
-        backend._ffi.NULL,
-    )
     backend.openssl_assert(res != 0)
     if operation == _DECRYPT:
         res = backend._lib.EVP_CIPHER_CTX_ctrl(
@@ -72,6 +65,13 @@ def _aead_ctx_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
 
 
 def _aead_nonce(backend, ctx, nonce, operation):
+    res = backend._lib.EVP_CIPHER_CTX_ctrl(
+        ctx,
+        backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
+        len(nonce),
+        backend._ffi.NULL,
+    )
+    backend.openssl_assert(res != 0)
     nonce_ptr = backend._ffi.from_buffer(nonce)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
@@ -113,9 +113,7 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
 
     cipher_name = _aead_cipher_name(cipher)
     if not cipher.encrypt_ctx:
-        ctx = cipher.encrypt_ctx = _aead_ctx_setup(
-            backend, cipher_name, cipher._key, nonce, None, tag_length, _ENCRYPT
-        )
+        ctx = cipher.encrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT)
     else:
         ctx = cipher.encrypt_ctx
     _aead_nonce(backend, ctx, nonce, _ENCRYPT)
@@ -149,9 +147,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     data = data[:-tag_length]
     cipher_name = _aead_cipher_name(cipher)
     if not cipher.decrypt_ctx:
-        ctx = cipher.decrypt_ctx = _aead_ctx_setup(
-            backend, cipher_name, cipher._key, nonce, tag, tag_length, _DECRYPT
-        )
+        ctx = cipher.decrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT)
     else:
         ctx = cipher.decrypt_ctx
     _aead_nonce(backend, ctx, nonce, _DECRYPT)

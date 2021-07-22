@@ -58,17 +58,26 @@ def _aead_ctx_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
             ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, tag_len, backend._ffi.NULL
         )
         backend.openssl_assert(res != 0)
-    return ctx
-
-
-def _aead_setup(backend, ctx, key, nonce, operation):
-    nonce_ptr = backend._ffi.from_buffer(nonce)
     key_ptr = backend._ffi.from_buffer(key)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
         backend._ffi.NULL,
         backend._ffi.NULL,
         key_ptr,
+        backend._ffi.NULL,
+        int(operation == _ENCRYPT),
+    )
+    backend.openssl_assert(res != 0)        
+    return ctx
+
+
+def _aead_nonce(backend, ctx, nonce, operation):
+    nonce_ptr = backend._ffi.from_buffer(nonce)
+    res = backend._lib.EVP_CipherInit_ex(
+        ctx,
+        backend._ffi.NULL,
+        backend._ffi.NULL,
+        backend._ffi.NULL,
         nonce_ptr,
         int(operation == _ENCRYPT),
     )
@@ -109,7 +118,7 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
         )
     else:
         ctx = cipher.encrypt_ctx
-    _aead_setup(backend, ctx, cipher._key, nonce, _ENCRYPT)
+    _aead_nonce(backend, ctx, nonce, _ENCRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):
@@ -145,7 +154,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
         )
     else:
         ctx = cipher.decrypt_ctx
-    _aead_setup(backend, ctx, cipher._key, nonce, _DECRYPT)
+    _aead_nonce(backend, ctx, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):

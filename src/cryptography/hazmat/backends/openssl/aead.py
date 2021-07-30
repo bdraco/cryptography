@@ -25,6 +25,7 @@ def _aead_cipher_name(cipher):
         assert isinstance(cipher, AESGCM)
         return "aes-{}-gcm".format(len(cipher._key) * 8).encode("ascii")
 
+
 def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
     evp_cipher = backend._lib.EVP_get_cipherbyname(cipher_name)
     backend.openssl_assert(evp_cipher != backend._ffi.NULL)
@@ -60,7 +61,7 @@ def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
         backend._ffi.NULL,
         int(operation == _ENCRYPT),
     )
-    backend.openssl_assert(res != 0)        
+    backend.openssl_assert(res != 0)
     return ctx
 
 
@@ -113,7 +114,9 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
 
     cipher_name = _aead_cipher_name(cipher)
     if not cipher.encrypt_ctx:
-        ctx = cipher.encrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT)
+        ctx = cipher.encrypt_ctx = _aead_ctx_setup(
+            backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT
+        )
     else:
         ctx = cipher.encrypt_ctx
         res = backend._lib.EVP_CIPHER_CTX_reset(ctx)
@@ -148,12 +151,9 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     tag = data[-tag_length:]
     data = data[:-tag_length]
     cipher_name = _aead_cipher_name(cipher)
-    if not cipher.decrypt_ctx:
-        ctx = cipher.decrypt_ctx = _aead_ctx_setup(backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT)
-    else:
-        ctx = cipher.decrypt_ctx
-        res = backend._lib.EVP_CIPHER_CTX_reset(ctx)
-        backend.openssl_assert(res != 0)        
+    ctx = _aead_ctx_setup(
+        backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT
+    )
     _aead_nonce(backend, ctx, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error

@@ -104,7 +104,12 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
     from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_ctx_setup(backend, cipher_name, None, tag_length, _ENCRYPT)
+    if not cipher.encrypt_ctx:
+        ctx = cipher.encrypt_ctx = _aead_ctx_setup(
+            backend, cipher_name, None, tag_length, _ENCRYPT
+        )
+    else:
+        ctx = cipher.encrypt_ctx
     _aead_nonce(backend, ctx, cipher._key, nonce, _ENCRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
@@ -135,10 +140,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     tag = data[-tag_length:]
     data = data[:-tag_length]
     cipher_name = _aead_cipher_name(cipher)
-    if not cipher.decrypt_ctx:
-        ctx = cipher.decrypt_ctx = _aead_ctx_setup(backend, cipher_name, tag, tag_length, _DECRYPT)
-    else:
-        ctx = cipher.decrypt_ctx
+    ctx = _aead_ctx_setup(backend, cipher_name, tag, tag_length, _DECRYPT)
     _aead_nonce(backend, ctx, cipher._key, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error

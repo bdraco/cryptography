@@ -139,8 +139,6 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
         ctx = cipher.decrypt_ctx = _aead_ctx_setup(backend, cipher_name, tag, tag_length, _DECRYPT)
     else:
         ctx = cipher.decrypt_ctx
-        res = backend._lib.EVP_CIPHER_CTX_reset(ctx)
-        backend.openssl_assert(res != 0)   
     _aead_nonce(backend, ctx, cipher._key, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error

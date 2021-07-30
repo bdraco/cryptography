@@ -26,7 +26,7 @@ def _aead_cipher_name(cipher):
         return "aes-{}-gcm".format(len(cipher._key) * 8).encode("ascii")
 
 
-def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
+def _aead_ctx_setup(backend, cipher_name, tag, tag_len, operation):
     evp_cipher = backend._lib.EVP_get_cipherbyname(cipher_name)
     backend.openssl_assert(evp_cipher != backend._ffi.NULL)
     ctx = backend._lib.EVP_CIPHER_CTX_new()
@@ -40,8 +40,6 @@ def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
         int(operation == _ENCRYPT),
     )
     backend.openssl_assert(res != 0)
-    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
-    backend.openssl_assert(res != 0)
     if operation == _DECRYPT:
         res = backend._lib.EVP_CIPHER_CTX_ctrl(
             ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, len(tag), tag
@@ -52,20 +50,10 @@ def _aead_ctx_setup(backend, cipher_name, key, tag, tag_len, operation):
             ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, tag_len, backend._ffi.NULL
         )
         backend.openssl_assert(res != 0)
-    key_ptr = backend._ffi.from_buffer(key)
-    res = backend._lib.EVP_CipherInit_ex(
-        ctx,
-        backend._ffi.NULL,
-        backend._ffi.NULL,
-        key_ptr,
-        backend._ffi.NULL,
-        int(operation == _ENCRYPT),
-    )
-    backend.openssl_assert(res != 0)
     return ctx
 
 
-def _aead_nonce(backend, ctx, nonce, operation):
+def _aead_nonce(backend, ctx, key, nonce, operation):
     res = backend._lib.EVP_CIPHER_CTX_ctrl(
         ctx,
         backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
@@ -73,12 +61,15 @@ def _aead_nonce(backend, ctx, nonce, operation):
         backend._ffi.NULL,
     )
     backend.openssl_assert(res != 0)
+    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
+    backend.openssl_assert(res != 0)
+    key_ptr = backend._ffi.from_buffer(key)
     nonce_ptr = backend._ffi.from_buffer(nonce)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
         backend._ffi.NULL,
         backend._ffi.NULL,
-        backend._ffi.NULL,
+        key_ptr,
         nonce_ptr,
         int(operation == _ENCRYPT),
     )
@@ -113,10 +104,8 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
     from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_ctx_setup(
-        backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT
-    )
-    _aead_nonce(backend, ctx, nonce, _ENCRYPT)
+    ctx = _aead_ctx_setup(backend, cipher_name, None, tag_length, _ENCRYPT)
+    _aead_nonce(backend, ctx, cipher._key, nonce, _ENCRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):
@@ -146,10 +135,8 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     tag = data[-tag_length:]
     data = data[:-tag_length]
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_ctx_setup(
-        backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT
-    )
-    _aead_nonce(backend, ctx, nonce, _DECRYPT)
+    ctx = _aead_ctx_setup(backend, cipher_name, tag, tag_length, _DECRYPT)
+    _aead_nonce(backend, ctx, cipher._key, nonce, _DECRYPT)
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     if isinstance(cipher, AESCCM):

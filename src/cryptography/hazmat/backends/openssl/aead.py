@@ -45,10 +45,11 @@ def _set_cipher(backend, ctx, cipher_name, operation):
     )
     backend.openssl_assert(res != 0)
 
+def _set_key_len(backend, ctx, key_len):
+    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, key_len)
+    backend.openssl_assert(res != 0)
 
 def _set_key(backend, ctx, key, operation):
-    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
-    backend.openssl_assert(res != 0)
     key_ptr = backend._ffi.from_buffer(key)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
@@ -103,21 +104,30 @@ def _aead_setup_with_variable_nonce_len(
 ):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
+    _set_key_len(backend, ctx, len(key))
+    _set_nonce_len(backend, ctx, len(nonce))
     if operation == _DECRYPT:
         _set_decrypt_tag(backend, ctx, tag)
     elif cipher_name.endswith(b"-ccm"):
         _set_ccm_tag_len(backend, ctx, tag_len)
-    _set_key(backend, ctx, key, operation)
-    _set_nonce_len(backend, ctx, len(nonce))
-    _set_nonce(backend, ctx, nonce, operation)
+    key_ptr = backend._ffi.from_buffer(key)
+    nonce_ptr = backend._ffi.from_buffer(nonce)
+    res = backend._lib.EVP_CipherInit_ex(
+        ctx,
+        backend._ffi.NULL,
+        backend._ffi.NULL,
+        key_ptr,
+        nonce_ptr,
+        int(operation == _ENCRYPT),
+    )
+    backend.openssl_assert(res != 0)
     return ctx
 
 
-def _aead_setup_with_fixed_nonce_len(
-    backend, cipher_name, key, nonce_len, operation
-):
+def _aead_setup_with_fixed_nonce_len(backend, cipher_name, key, nonce_len, operation):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
+    _set_key_len(backend, ctx, len(key))
     _set_key(backend, ctx, key, operation)
     _set_nonce_len(backend, ctx, nonce_len)
     return ctx
@@ -223,9 +233,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     return _decrypt_data(backend, ctx, data, associated_data)
 
 
-def _decrypt_with_fixed_nonce_len(
-    backend, ctx, nonce, data, associated_data, tag_length
-):
+def _decrypt_with_fixed_nonce_len(backend, ctx, nonce, data, associated_data, tag_length):
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
     _set_nonce(backend, ctx, nonce, _DECRYPT)

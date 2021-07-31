@@ -192,6 +192,7 @@ def _decrypt_data_aesccm(backend, ctx, data, associated_data):
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
     _set_length(backend, ctx, len(data))
+
     _process_aad(backend, ctx, associated_data)
     # CCM has a different error path if the tag doesn't match. Errors are
     # raised in Update and Final is irrelevant.
@@ -212,4 +213,5 @@ def _decrypt_data(backend, ctx, data, associated_data):
     if res == 0:
         backend._consume_errors()
         raise InvalidTag
+
     return processed_data

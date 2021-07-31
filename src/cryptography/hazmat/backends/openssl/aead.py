@@ -46,11 +46,11 @@ def _set_cipher(backend, ctx, cipher_name, operation):
     backend.openssl_assert(res != 0)
 
 
-def _set_key_and_nonce(backend, ctx, key, nonce, nonce_len, operation):
+def _set_key_and_nonce(backend, ctx, key, nonce, operation):
     res = backend._lib.EVP_CIPHER_CTX_ctrl(
         ctx,
         backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
-        nonce_len,
+        len(nonce),
         backend._ffi.NULL,
     )
     backend.openssl_assert(res != 0)
@@ -84,17 +84,18 @@ def _set_key(backend, ctx, key, operation):
     backend.openssl_assert(res != 0)
 
 
-def _set_tag(backend, ctx, cipher_name, tag, tag_len, operation):
-    if operation == _DECRYPT:
-        res = backend._lib.EVP_CIPHER_CTX_ctrl(
-            ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, len(tag), tag
-        )
-        backend.openssl_assert(res != 0)
-    elif cipher_name.endswith(b"-ccm"):
-        res = backend._lib.EVP_CIPHER_CTX_ctrl(
-            ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, tag_len, backend._ffi.NULL
-        )
-        backend.openssl_assert(res != 0)
+def _set_decrypt_tag(backend, ctx, tag):
+    res = backend._lib.EVP_CIPHER_CTX_ctrl(
+        ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, len(tag), tag
+    )
+    backend.openssl_assert(res != 0)
+
+
+def _set_ccm_tag_len(backend, ctx, tag_len):
+    res = backend._lib.EVP_CIPHER_CTX_ctrl(
+        ctx, backend._lib.EVP_CTRL_AEAD_SET_TAG, tag_len, backend._ffi.NULL
+    )
+    backend.openssl_assert(res != 0)
 
 
 def _set_nonce(backend, ctx, nonce, operation):
@@ -115,16 +116,18 @@ def _aead_setup_with_nonce(
 ):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
-    _set_key_and_nonce(backend, ctx, cipher_name, key, nonce, operation)
-    _set_tag(backend, ctx, cipher_name, tag, tag_len, operation)
+    _set_key_and_nonce(backend, ctx, key, nonce, operation)
+    if operation == _DECRYPT:
+        _set_decrypt_tag(backend, ctx, tag)
+    elif cipher_name.endswith(b"-ccm"):
+        _set_ccm_tag_len(backend, ctx, tag_len)
     return ctx
 
 
-def _aead_setup(backend, cipher_name, key, tag, tag_len, operation):
+def _aead_setup(backend, cipher_name, key, operation):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
     _set_key(backend, ctx, cipher_name, key, operation)
-    _set_tag(backend, ctx, cipher_name, tag, tag_len, operation)
     return ctx
 
 
@@ -162,6 +165,15 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
         tag_length,
         _ENCRYPT,
     )
+    return _encrypt_data(
+        backend, ctx, cipher, data, associated_data, tag_length
+    )
+
+
+def _encrypt_multi(
+    backend, ctx, cipher, nonce, data, associated_data, tag_length
+):
+    _set_nonce(backend, ctx, nonce, _ENCRYPT)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
     )
@@ -216,6 +228,14 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     if isinstance(cipher, AESCCM):
         return _decrypt_data_aesccm(backend, ctx, data, associated_data)
 
+    return _decrypt_data(backend, ctx, data, associated_data)
+
+
+def _decrypt_multi(backend, ctx, nonce, data, associated_data, tag_length):
+    tag = _tag_from_data(data, tag_length)
+    data = data[:-tag_length]
+    _set_nonce(backend, ctx, nonce, _DECRYPT)
+    _set_decrypt_tag(backend, ctx, tag)
     return _decrypt_data(backend, ctx, data, associated_data)
 
 

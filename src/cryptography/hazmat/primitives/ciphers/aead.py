@@ -25,7 +25,11 @@ class ChaCha20Poly1305(object):
         if len(key) != 32:
             raise ValueError("ChaCha20Poly1305 key must be 32 bytes.")
 
+        self._cipher_name = aead._aead_cipher_name(self)
+        self._tag_length = 16
         self._key = key
+        self._decrypt_ctx = None
+        self._encrypt_ctx = None
 
     @classmethod
     def generate_key(cls) -> bytes:
@@ -37,6 +41,11 @@ class ChaCha20Poly1305(object):
         data: bytes,
         associated_data: typing.Optional[bytes],
     ) -> bytes:
+        if not self._encrypt_ctx:
+            self._encrypt_ctx = aead._aead_setup(
+                backend, self._cipher_name, self._key, aead._ENCRYPT
+            )
+
         if associated_data is None:
             associated_data = b""
 
@@ -47,7 +56,15 @@ class ChaCha20Poly1305(object):
             )
 
         self._check_params(nonce, data, associated_data)
-        return aead._encrypt(backend, self, nonce, data, associated_data, 16)
+        return aead._encrypt_multi(
+            backend,
+            self._encrypt_ctx,
+            self,
+            nonce,
+            data,
+            associated_data,
+            self._tag_length,
+        )
 
     def decrypt(
         self,
@@ -55,11 +72,23 @@ class ChaCha20Poly1305(object):
         data: bytes,
         associated_data: typing.Optional[bytes],
     ) -> bytes:
+        if not self._decrypt_ctx:
+            self._decrypt_ctx = aead._aead_setup(
+                backend, self._cipher_name, self._key, aead._DECRYPT
+            )
+
         if associated_data is None:
             associated_data = b""
 
         self._check_params(nonce, data, associated_data)
-        return aead._decrypt(backend, self, nonce, data, associated_data, 16)
+        return aead._decrypt_multi(
+            backend,
+            self._decrypt_ctx,
+            nonce,
+            data,
+            associated_data,
+            self._tag_length,
+        )
 
     def _check_params(
         self,

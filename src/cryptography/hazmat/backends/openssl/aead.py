@@ -228,7 +228,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     return _decrypt_data(backend, ctx, data, associated_data)
 
 
-def _encrypt_with_fixed_nonce_len(
+def _decrypt_with_fixed_nonce_len(
     backend, ctx, nonce, data, associated_data, tag_length
 ):
     tag = _tag_from_data(data, tag_length)

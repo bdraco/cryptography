@@ -32,7 +32,7 @@ def _create_ctx(backend):
     return ctx
 
 
-def _set_key(backend, ctx, cipher_name, key, operation):
+def _set_key(backend, ctx, cipher_name, key, nonce_len, operation):
     evp_cipher = backend._lib.EVP_get_cipherbyname(cipher_name)
     backend.openssl_assert(evp_cipher != backend._ffi.NULL)
     res = backend._lib.EVP_CipherInit_ex(
@@ -42,6 +42,13 @@ def _set_key(backend, ctx, cipher_name, key, operation):
         backend._ffi.NULL,
         backend._ffi.NULL,
         int(operation == _ENCRYPT),
+    )
+    backend.openssl_assert(res != 0)
+    res = backend._lib.EVP_CIPHER_CTX_ctrl(
+        ctx,
+        backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
+        nonce_len,
+        backend._ffi.NULL,
     )
     backend.openssl_assert(res != 0)
     res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
@@ -72,13 +79,6 @@ def _set_tag(backend, ctx, cipher_name, tag, tag_len, operation):
 
 
 def _set_nonce(backend, ctx, nonce, operation):
-    res = backend._lib.EVP_CIPHER_CTX_ctrl(
-        ctx,
-        backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
-        len(nonce),
-        backend._ffi.NULL,
-    )
-    backend.openssl_assert(res != 0)
     nonce_ptr = backend._ffi.from_buffer(nonce)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
@@ -91,9 +91,9 @@ def _set_nonce(backend, ctx, nonce, operation):
     backend.openssl_assert(res != 0)
 
 
-def _aead_setup(backend, cipher_name, key, tag, tag_len, operation):
+def _aead_setup(backend, cipher_name, key, nonce_len, tag, tag_len, operation):
     ctx = _create_ctx(backend)
-    _set_key(backend, ctx, cipher_name, key, operation)
+    _set_key(backend, ctx, cipher_name, key, nonce_len, operation)
     _set_tag(backend, ctx, cipher_name, tag, tag_len, operation)
     return ctx
 
@@ -122,15 +122,21 @@ def _process_data(backend, ctx, data):
     return backend._ffi.buffer(buf, outlen[0])[:]
 
 
-def _setup_encrypt(backend, cipher, tag_length):
+def _setup_encrypt(backend, cipher, nonce_len, tag_length):
     cipher_name = _aead_cipher_name(cipher)
     return _aead_setup(
-        backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT
+        backend,
+        cipher_name,
+        cipher._key,
+        nonce_len,
+        None,
+        tag_length,
+        _ENCRYPT,
     )
 
 
 def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
-    ctx = _setup_encrypt(backend, cipher, tag_length)
+    ctx = _setup_encrypt(backend, cipher, len(nonce), tag_length)
     _set_nonce(backend, ctx, nonce, _ENCRYPT)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
@@ -161,10 +167,10 @@ def _encrypt_data(backend, ctx, cipher, data, associated_data, tag_length):
     return processed_data + tag
 
 
-def _setup_decrypt(backend, cipher, tag, tag_length):
+def _setup_decrypt(backend, cipher, nonce_len, tag, tag_length):
     cipher_name = _aead_cipher_name(cipher)
     return _aead_setup(
-        backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT
+        backend, cipher_name, cipher._key, nonce_len, tag, tag_length, _DECRYPT
     )
 
 
@@ -179,7 +185,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
 
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
-    ctx = _setup_decrypt(backend, cipher, tag, tag_length)
+    ctx = _setup_decrypt(backend, cipher, len(nonce), tag, tag_length)
     _set_nonce(backend, ctx, nonce, _DECRYPT)
 
     if isinstance(cipher, AESCCM):

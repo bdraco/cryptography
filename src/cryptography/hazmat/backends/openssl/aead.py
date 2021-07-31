@@ -105,6 +105,13 @@ def _set_ccm_tag_len(backend, ctx, tag_len):
 
 
 def _set_nonce(backend, ctx, nonce, operation):
+    res = backend._lib.EVP_CIPHER_CTX_ctrl(
+        ctx,
+        backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
+        len(nonce),
+        backend._ffi.NULL,
+    )
+    backend.openssl_assert(res != 0)
     nonce_ptr = backend._ffi.from_buffer(nonce)
     res = backend._lib.EVP_CipherInit_ex(
         ctx,
@@ -131,7 +138,7 @@ def _aead_setup_with_nonce(
 def _aead_setup(backend, cipher_name, key, operation):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
-    _set_key(backend, ctx, cipher_name, key, operation)
+    _set_key(backend, ctx, key, operation)
     return ctx
 
 

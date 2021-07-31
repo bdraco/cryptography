@@ -120,6 +120,14 @@ def _aead_setup_with_nonce(
     return ctx
 
 
+def _aead_setup(backend, cipher_name, key, tag, tag_len, operation):
+    ctx = _create_ctx(backend)
+    _set_cipher(backend, ctx, cipher_name, operation)
+    _set_key(backend, ctx, cipher_name, key, operation)
+    _set_tag(backend, ctx, cipher_name, tag, tag_len, operation)
+    return ctx
+
+
 def _set_length(backend, ctx, data_len):
     intptr = backend._ffi.new("int *")
     res = backend._lib.EVP_CipherUpdate(
@@ -154,7 +162,6 @@ def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
         tag_length,
         _ENCRYPT,
     )
-    # _set_nonce(backend, ctx, nonce, _ENCRYPT)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
     )

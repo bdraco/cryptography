@@ -46,7 +46,11 @@ def _set_cipher(backend, ctx, cipher_name, operation):
     backend.openssl_assert(res != 0)
 
 
-def _set_key_and_nonce(backend, ctx, key, nonce, operation):
+def _set_key_tag_and_nonce(
+    backend, ctx, cipher_name, key, tag, tag_len, nonce, operation
+):
+    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
+    backend.openssl_assert(res != 0)
     res = backend._lib.EVP_CIPHER_CTX_ctrl(
         ctx,
         backend._lib.EVP_CTRL_AEAD_SET_IVLEN,
@@ -54,8 +58,10 @@ def _set_key_and_nonce(backend, ctx, key, nonce, operation):
         backend._ffi.NULL,
     )
     backend.openssl_assert(res != 0)
-    res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, len(key))
-    backend.openssl_assert(res != 0)
+    if operation == _DECRYPT:
+        _set_decrypt_tag(backend, ctx, tag)
+    elif cipher_name.endswith(b"-ccm"):
+        _set_ccm_tag_len(backend, ctx, tag_len)
     key_ptr = backend._ffi.from_buffer(key)
     nonce_ptr = backend._ffi.from_buffer(nonce)
     res = backend._lib.EVP_CipherInit_ex(
@@ -116,11 +122,9 @@ def _aead_setup_with_nonce(
 ):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
-    _set_key_and_nonce(backend, ctx, key, nonce, operation)
-    if operation == _DECRYPT:
-        _set_decrypt_tag(backend, ctx, tag)
-    elif cipher_name.endswith(b"-ccm"):
-        _set_ccm_tag_len(backend, ctx, tag_len)
+    _set_key_tag_and_nonce(
+        backend, ctx, cipher_name, key, tag, tag_len, nonce, operation
+    )
     return ctx
 
 

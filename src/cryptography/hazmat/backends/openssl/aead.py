@@ -110,7 +110,9 @@ def _set_nonce(backend, ctx, nonce, operation):
     backend.openssl_assert(res != 0)
 
 
-def _aead_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
+def _aead_setup_with_nonce(
+    backend, cipher_name, key, nonce, tag, tag_len, operation
+):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
     _set_key_and_nonce(backend, ctx, cipher_name, key, nonce, operation)
@@ -142,20 +144,16 @@ def _process_data(backend, ctx, data):
     return backend._ffi.buffer(buf, outlen[0])[:]
 
 
-def _setup_encrypt(backend, cipher, nonce, tag, tag_length):
-    return _aead_setup(
+def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
+    ctx = _aead_setup_with_nonce(
         backend,
         _aead_cipher_name(cipher),
         cipher._key,
         nonce,
-        tag,
+        None,
         tag_length,
         _ENCRYPT,
     )
-
-
-def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
-    ctx = _setup_encrypt(backend, cipher, nonce, len(nonce), tag_length)
     # _set_nonce(backend, ctx, nonce, _ENCRYPT)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
@@ -186,18 +184,6 @@ def _encrypt_data(backend, ctx, cipher, data, associated_data, tag_length):
     return processed_data + tag
 
 
-def _setup_decrypt(backend, cipher, nonce, tag, tag_length):
-    return _aead_setup(
-        backend,
-        _aead_cipher_name(cipher),
-        cipher._key,
-        nonce,
-        tag,
-        tag_length,
-        _DECRYPT,
-    )
-
-
 def _tag_from_data(data, tag_length):
     if len(data) < tag_length:
         raise InvalidTag
@@ -209,8 +195,16 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
 
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
-    ctx = _setup_decrypt(backend, cipher, nonce, tag, tag_length)
-    # _set_nonce(backend, ctx, nonce, _DECRYPT)
+
+    ctx = _aead_setup_with_nonce(
+        backend,
+        _aead_cipher_name(cipher),
+        cipher._key,
+        nonce,
+        tag,
+        tag_length,
+        _DECRYPT,
+    )
 
     if isinstance(cipher, AESCCM):
         return _decrypt_data_aesccm(backend, ctx, data, associated_data)

@@ -112,7 +112,7 @@ def _aead_setup_with_variable_nonce_len(
         _set_ccm_tag_len(backend, ctx, tag_len)
     _set_key_len(backend, ctx, len(key))
     _set_key(backend, ctx, key, operation)
-    _set_nonce_len(backend, ctx, len(nonce))        
+    _set_nonce_len(backend, ctx, len(nonce))
     _set_nonce(backend, ctx, nonce, operation)
     return ctx
 

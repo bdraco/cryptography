@@ -91,11 +91,10 @@ def _set_nonce(backend, ctx, nonce, operation):
     backend.openssl_assert(res != 0)
 
 
-def _aead_setup(backend, cipher_name, key, nonce, tag, tag_len, operation):
+def _aead_setup(backend, cipher_name, key, tag, tag_len, operation):
     ctx = _create_ctx(backend)
     _set_key(backend, ctx, cipher_name, key, operation)
     _set_tag(backend, ctx, cipher_name, tag, tag_len, operation)
-    _set_nonce(backend, ctx, nonce)
     return ctx
 
 
@@ -123,11 +122,16 @@ def _process_data(backend, ctx, data):
     return backend._ffi.buffer(buf, outlen[0])[:]
 
 
-def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
+def _setup_encrypt(backend, cipher, tag_length):
     cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_setup(
-        backend, cipher_name, cipher._key, nonce, None, tag_length, _ENCRYPT
+    return _aead_setup(
+        backend, cipher_name, cipher._key, None, tag_length, _ENCRYPT
     )
+
+
+def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
+    ctx = _setup_encrypt(backend, cipher, tag_length)
+    _set_nonce(backend, ctx, nonce)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
     )
@@ -157,19 +161,24 @@ def _encrypt_data(backend, ctx, cipher, data, associated_data, tag_length):
     return processed_data + tag
 
 
-def _split_data(data, tag_length):
+def _setup_decrypt(backend, cipher, tag, tag_length):
+    cipher_name = _aead_cipher_name(cipher)
+    return _aead_setup(
+        backend, cipher_name, cipher._key, tag, tag_length, _DECRYPT
+    )
+
+
+def _tag_from_data(data, tag_length):
     if len(data) < tag_length:
         raise InvalidTag
-    tag = data[-tag_length:]
-    return tag, data[:-tag_length]
+    return data[-tag_length:]
 
 
 def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
-    tag, data = _split_data(data, tag_length)
-    cipher_name = _aead_cipher_name(cipher)
-    ctx = _aead_setup(
-        backend, cipher_name, cipher._key, nonce, tag, tag_length, _DECRYPT
-    )
+    tag = _tag_from_data(data, tag_length)
+    data = data[:-tag_length]
+    ctx = _setup_decrypt(backend, cipher, tag, tag_length)
+    _set_nonce(backend, ctx, nonce)
     return _decrypt_data(backend, ctx, cipher, data, associated_data)
 
 

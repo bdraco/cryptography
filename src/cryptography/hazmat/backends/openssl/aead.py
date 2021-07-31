@@ -131,7 +131,7 @@ def _setup_encrypt(backend, cipher, tag_length):
 
 def _encrypt(backend, cipher, nonce, data, associated_data, tag_length):
     ctx = _setup_encrypt(backend, cipher, tag_length)
-    _set_nonce(backend, ctx, nonce)
+    _set_nonce(backend, ctx, nonce, _ENCRYPT)
     return _encrypt_data(
         backend, ctx, cipher, data, associated_data, tag_length
     )
@@ -178,7 +178,7 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
     ctx = _setup_decrypt(backend, cipher, tag, tag_length)
-    _set_nonce(backend, ctx, nonce)
+    _set_nonce(backend, ctx, nonce, _DECRYPT)
     return _decrypt_data(backend, ctx, cipher, data, associated_data)
 
 

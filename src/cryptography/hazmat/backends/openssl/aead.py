@@ -175,39 +175,41 @@ def _tag_from_data(data, tag_length):
 
 
 def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
+    from cryptography.hazmat.primitives.ciphers.aead import AESCCM
+
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
     ctx = _setup_decrypt(backend, cipher, tag, tag_length)
     _set_nonce(backend, ctx, nonce, _DECRYPT)
-    return _decrypt_data(backend, ctx, cipher, data, associated_data)
+
+    if isinstance(cipher, AESCCM):
+        return _decrypt_data_aesccm(backend, ctx, data, associated_data)
+
+    return _decrypt_data(backend, ctx, data, associated_data)
 
 
-def _decrypt_data(backend, ctx, cipher, data, associated_data):
-    from cryptography.hazmat.primitives.ciphers.aead import AESCCM
-
+def _decrypt_data_aesccm(backend, ctx, data, associated_data):
     # CCM requires us to pass the length of the data before processing anything
     # However calling this with any other AEAD results in an error
-    if isinstance(cipher, AESCCM):
-        _set_length(backend, ctx, len(data))
-
+    _set_length(backend, ctx, len(data))
     _process_aad(backend, ctx, associated_data)
     # CCM has a different error path if the tag doesn't match. Errors are
     # raised in Update and Final is irrelevant.
-    if isinstance(cipher, AESCCM):
-        outlen = backend._ffi.new("int *")
-        buf = backend._ffi.new("unsigned char[]", len(data))
-        res = backend._lib.EVP_CipherUpdate(ctx, buf, outlen, data, len(data))
-        if res != 1:
-            backend._consume_errors()
-            raise InvalidTag
+    outlen = backend._ffi.new("int *")
+    buf = backend._ffi.new("unsigned char[]", len(data))
+    res = backend._lib.EVP_CipherUpdate(ctx, buf, outlen, data, len(data))
+    if res != 1:
+        backend._consume_errors()
+        raise InvalidTag
+    return backend._ffi.buffer(buf, outlen[0])[:]
 
-        processed_data = backend._ffi.buffer(buf, outlen[0])[:]
-    else:
-        processed_data = _process_data(backend, ctx, data)
-        outlen = backend._ffi.new("int *")
-        res = backend._lib.EVP_CipherFinal_ex(ctx, backend._ffi.NULL, outlen)
-        if res == 0:
-            backend._consume_errors()
-            raise InvalidTag
 
+def _decrypt_data(backend, ctx, data, associated_data):
+    _process_aad(backend, ctx, associated_data)
+    processed_data = _process_data(backend, ctx, data)
+    outlen = backend._ffi.new("int *")
+    res = backend._lib.EVP_CipherFinal_ex(ctx, backend._ffi.NULL, outlen)
+    if res == 0:
+        backend._consume_errors()
+        raise InvalidTag
     return processed_data

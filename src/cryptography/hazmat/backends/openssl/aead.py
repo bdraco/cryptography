@@ -45,9 +45,11 @@ def _set_cipher(backend, ctx, cipher_name, operation):
     )
     backend.openssl_assert(res != 0)
 
+
 def _set_key_len(backend, ctx, key_len):
     res = backend._lib.EVP_CIPHER_CTX_set_key_length(ctx, key_len)
     backend.openssl_assert(res != 0)
+
 
 def _set_key(backend, ctx, key, operation):
     key_ptr = backend._ffi.from_buffer(key)
@@ -115,7 +117,9 @@ def _aead_setup_with_variable_nonce_len(
     return ctx
 
 
-def _aead_setup_with_fixed_nonce_len(backend, cipher_name, key, nonce_len, operation):
+def _aead_setup_with_fixed_nonce_len(
+    backend, cipher_name, key, nonce_len, operation
+):
     ctx = _create_ctx(backend)
     _set_cipher(backend, ctx, cipher_name, operation)
     _set_key_len(backend, ctx, len(key))
@@ -224,7 +228,9 @@ def _decrypt(backend, cipher, nonce, data, associated_data, tag_length):
     return _decrypt_data(backend, ctx, data, associated_data)
 
 
-def _decrypt_with_fixed_nonce_len(backend, ctx, nonce, data, associated_data, tag_length):
+def _decrypt_with_fixed_nonce_len(
+    backend, ctx, nonce, data, associated_data, tag_length
+):
     tag = _tag_from_data(data, tag_length)
     data = data[:-tag_length]
     _set_nonce(backend, ctx, nonce, _DECRYPT)

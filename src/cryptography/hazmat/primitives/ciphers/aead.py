@@ -27,6 +27,7 @@ class ChaCha20Poly1305(object):
 
         self._cipher_name = aead._aead_cipher_name(self)
         self._tag_length = 16
+        self._nonce_len = 12
         self._key = key
         self._decrypt_ctx = None
         self._encrypt_ctx = None
@@ -42,8 +43,8 @@ class ChaCha20Poly1305(object):
         associated_data: typing.Optional[bytes],
     ) -> bytes:
         if not self._encrypt_ctx:
-            self._encrypt_ctx = aead._aead_setup(
-                backend, self._cipher_name, self._key, aead._ENCRYPT
+            self._encrypt_ctx = aead._aead_setup_with_fixed_nonce_len(
+                backend, self._cipher_name, self._key, self._nonce_len, aead._ENCRYPT
             )
 
         if associated_data is None:
@@ -56,7 +57,7 @@ class ChaCha20Poly1305(object):
             )
 
         self._check_params(nonce, data, associated_data)
-        return aead._encrypt_multi(
+        return aead._encrypt_with_fixed_nonce_len(
             backend,
             self._encrypt_ctx,
             self,
@@ -73,15 +74,15 @@ class ChaCha20Poly1305(object):
         associated_data: typing.Optional[bytes],
     ) -> bytes:
         if not self._decrypt_ctx:
-            self._decrypt_ctx = aead._aead_setup(
-                backend, self._cipher_name, self._key, aead._DECRYPT
+            self._decrypt_ctx = aead._aead_setup_with_fixed_nonce_len(
+                backend, self._cipher_name, self._key, self._nonce_len, aead._DECRYPT
             )
 
         if associated_data is None:
             associated_data = b""
 
         self._check_params(nonce, data, associated_data)
-        return aead._decrypt_multi(
+        return aead._decrypt_with_fixed_nonce_len(
             backend,
             self._decrypt_ctx,
             nonce,
@@ -99,7 +100,7 @@ class ChaCha20Poly1305(object):
         utils._check_byteslike("nonce", nonce)
         utils._check_bytes("data", data)
         utils._check_bytes("associated_data", associated_data)
-        if len(nonce) != 12:
+        if len(nonce) != self._nonce_len:
             raise ValueError("Nonce must be 12 bytes")
 
 

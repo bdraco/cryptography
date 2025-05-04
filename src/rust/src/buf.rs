@@ -43,8 +43,7 @@ fn _extract_buffer_length<'p>(
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
     use pyo3::buffer::PyBuffer;
-    use pyo3::types::PyAnyMethods;
-    use pyo3::types::PyBytes;
+    use pyo3::types::{PyAnyMethods, PyBytes};
     use std::slice;
 
     pub(crate) struct CffiBuf<'p> {

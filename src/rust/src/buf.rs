@@ -4,7 +4,7 @@
 
 // buf.readonly always returns false on PyPy, so we can't use it to
 // determine if the buffer is writable.
-#[cfg(all(Py_3_11, not(python_implementation = "PyPy")))]
+#[cfg(all(Py_3_11, not(PyPy)))]
 mod py311_impl {
     use pyo3::buffer::PyBuffer;
     use pyo3::types::PyAnyMethods;
@@ -133,7 +133,7 @@ mod py311_impl {
     }
 }
 
-#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
+#[cfg(any(not(Py_3_11), PyPy))]
 mod legacy_impl {
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};

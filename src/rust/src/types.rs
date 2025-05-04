@@ -494,13 +494,13 @@ pub static DSA_PUBLIC_KEY: LazyPyImport = LazyPyImport::new(
     &["DSAPublicKey"],
 );
 
-#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
+#[cfg(any(not(Py_3_11), PyPy))]
 pub static FFI_FROM_BUFFER: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.bindings._rust",
     &["_openssl", "ffi", "from_buffer"],
 );
 
-#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
+#[cfg(any(not(Py_3_11), PyPy))]
 pub static FFI_CAST: LazyPyImport = LazyPyImport::new(
     "cryptography.hazmat.bindings._rust",
     &["_openssl", "ffi", "cast"],

@@ -4,10 +4,10 @@
 
 #[cfg(Py_3_11)]
 mod py311_impl {
-    use std::slice;
-    use pyo3::types::PyAnyMethods;
     use pyo3::buffer::PyBuffer;
+    use pyo3::types::PyAnyMethods;
     use pyo3::types::PyBytes;
+    use std::slice;
 
     pub(crate) struct CffiBuf<'p> {
         pyobj: pyo3::Bound<'p, pyo3::PyAny>,
@@ -117,9 +117,9 @@ mod py311_impl {
 
 #[cfg(not(Py_3_11))]
 mod legacy_impl {
-    use std::slice;
-    use pyo3::types::{IntoPyDict, PyAnyMethods};
     use crate::types;
+    use pyo3::types::{IntoPyDict, PyAnyMethods};
+    use std::slice;
 
     pub(crate) struct CffiBuf<'p> {
         pyobj: pyo3::Bound<'p, pyo3::PyAny>,
@@ -191,7 +191,7 @@ mod legacy_impl {
                 // against concurrent mutation. See
                 // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
                 // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.                  
+                // we're doing an unsound thing and living with it.
                 unsafe { slice::from_raw_parts(ptrval as *const u8, len) }
             };
 
@@ -230,7 +230,7 @@ mod legacy_impl {
                 // against concurrent mutation. See
                 // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
                 // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.                
+                // we're doing an unsound thing and living with it.
                 unsafe { slice::from_raw_parts_mut(ptrval as *mut u8, len) }
             };
 

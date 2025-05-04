@@ -80,7 +80,7 @@ mod py311_impl {
                 // against concurrent mutation. See
                 // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
                 // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.                
+                // we're doing an unsound thing and living with it.
                 unsafe { slice::from_raw_parts(bufobj.buf_ptr() as *const u8, len) }
             };
 
@@ -118,7 +118,7 @@ mod py311_impl {
                 // against concurrent mutation. See
                 // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
                 // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.                
+                // we're doing an unsound thing and living with it.
                 unsafe { slice::from_raw_parts_mut(bufobj.buf_ptr() as *mut u8, len) }
             };
 

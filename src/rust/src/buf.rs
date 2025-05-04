@@ -4,7 +4,7 @@
 
 // buf.readonly always returns false on PyPy, so we can't use it to
 // determine if the buffer is writable.
-#[cfg(all(Py_3_11, not(PyPy)))]
+#[cfg(Py_3_11)]
 mod pybuffer_impl {
     use pyo3::buffer::PyBuffer;
     use pyo3::types::PyAnyMethods;
@@ -19,7 +19,6 @@ mod pybuffer_impl {
 
     fn _extract_buffer_length(
         pyobj: &pyo3::Bound<'_, pyo3::PyAny>,
-        mutable: bool,
     ) -> pyo3::PyResult<PyBuffer<u8>> {
         let buf = PyBuffer::<u8>::get(pyobj).map_err(|_| {
             let errmsg = if pyobj.is_instance_of::<pyo3::types::PyString>() {
@@ -32,13 +31,6 @@ mod pybuffer_impl {
             };
             pyo3::exceptions::PyTypeError::new_err(errmsg)
         })?;
-
-        if mutable && buf.readonly() {
-            return Err(pyo3::exceptions::PyBufferError::new_err(
-                "Buffer is not writable, but a writable buffer was requested.",
-            ));
-        }
-
         Ok(buf)
     }
 
@@ -70,7 +62,7 @@ mod pybuffer_impl {
 
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-            let bufobj = _extract_buffer_length(pyobj, false)?;
+            let bufobj = _extract_buffer_length(pyobj)?;
             let len = pyobj.len()?;
             let buf = if len == 0 {
                 &[]
@@ -93,47 +85,8 @@ mod pybuffer_impl {
             })
         }
     }
-
-    pub(crate) struct CffiMutBuf<'p> {
-        _pyobj: pyo3::Bound<'p, pyo3::PyAny>,
-        _bufobj: PyBuffer<u8>,
-        buf: &'p mut [u8],
-    }
-
-    impl CffiMutBuf<'_> {
-        pub(crate) fn as_mut_bytes(&mut self) -> &mut [u8] {
-            self.buf
-        }
-    }
-
-    impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
-        fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-            let bufobj = _extract_buffer_length(pyobj, false)?;
-            let len = pyobj.len()?;
-            let buf = if len == 0 {
-                &mut []
-            } else {
-                // SAFETY: _extract_buffer_length ensures that we have a valid ptr
-                // and length (and we ensure we meet slice's requirements for
-                // 0-length slices above), we're keeping pyobj alive which ensures
-                // the buffer is valid. But! There is no actually guarantee
-                // against concurrent mutation. See
-                // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-                // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.
-                unsafe { slice::from_raw_parts_mut(bufobj.buf_ptr() as *mut u8, len) }
-            };
-
-            Ok(CffiMutBuf {
-                _pyobj: pyobj.clone(),
-                _bufobj: bufobj,
-                buf,
-            })
-        }
-    }
 }
 
-#[cfg(any(not(Py_3_11), PyPy))]
 mod ffi_impl {
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};
@@ -261,8 +214,10 @@ mod ffi_impl {
     }
 }
 
-#[cfg(all(Py_3_11, not(PyPy)))]
-pub(crate) use pybuffer_impl::*;
+pub(crate) use ffi_impl::CffiMutBuf;
 
-#[cfg(any(not(Py_3_11), PyPy))]
-pub(crate) use ffi_impl::*;
+#[cfg(Py_3_11)]
+pub(crate) use pybuffer_impl::CffiBuf;
+
+#[cfg(not(Py_3_11))]
+pub(crate) use ffi_impl::CffiBuf;

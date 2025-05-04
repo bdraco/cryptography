@@ -2,9 +2,11 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use crate::types;
-use pyo3::types::{IntoPyDict, PyAnyMethods};
 use std::slice;
+
+use pyo3::types::{IntoPyDict, PyAnyMethods};
+
+use crate::types;
 
 fn _extract_buffer_length<'p>(
     pyobj: &pyo3::Bound<'p, pyo3::PyAny>,

@@ -2,7 +2,9 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-#[cfg(Py_3_11)]
+// buf.readonly always returns false on PyPy, so we can't use it to
+// determine if the buffer is writable.
+#[cfg(all(Py_3_11, not(python_implementation = "PyPy")))]
 mod py311_impl {
     use pyo3::buffer::PyBuffer;
     use pyo3::types::PyAnyMethods;
@@ -131,7 +133,7 @@ mod py311_impl {
     }
 }
 
-#[cfg(not(Py_3_11))]
+#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
 mod legacy_impl {
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};
@@ -259,8 +261,8 @@ mod legacy_impl {
     }
 }
 
-#[cfg(Py_3_11)]
+#[cfg(all(Py_3_11, not(python_implementation = "PyPy")))]
 pub(crate) use py311_impl::*;
 
-#[cfg(not(Py_3_11))]
+#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
 pub(crate) use legacy_impl::*;

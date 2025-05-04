@@ -171,6 +171,12 @@ mod ffi_impl {
     }
 }
 
+pub(crate) struct CffiMutBuf<'p> {
+    _pyobj: pyo3::Bound<'p, pyo3::PyAny>,
+    _bufobj: pyo3::Bound<'p, pyo3::PyAny>,
+    buf: &'p mut [u8],
+}
+
 impl CffiMutBuf<'_> {
     pub(crate) fn as_mut_bytes(&mut self) -> &mut [u8] {
         self.buf
@@ -202,12 +208,6 @@ impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
             buf,
         })
     }
-}
-
-pub(crate) struct CffiMutBuf<'p> {
-    _pyobj: pyo3::Bound<'p, pyo3::PyAny>,
-    _bufobj: pyo3::Bound<'p, pyo3::PyAny>,
-    buf: &'p mut [u8],
 }
 
 #[cfg(Py_3_11)]

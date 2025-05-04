@@ -52,7 +52,4 @@ fn main() {
             println!("cargo:rustc-cfg=CRYPTOGRAPHY_OSSLCONF=\"{var}\"");
         }
     }
-
-    // Ensure the build script re-runs when any of the source files change
-    println!("cargo:rerun-if-changed=build.rs");
 }

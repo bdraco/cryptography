@@ -261,8 +261,8 @@ mod legacy_impl {
     }
 }
 
-#[cfg(all(Py_3_11, not(python_implementation = "PyPy")))]
+#[cfg(all(Py_3_11, not(PyPy)))]
 pub(crate) use py311_impl::*;
 
-#[cfg(any(not(Py_3_11), python_implementation = "PyPy"))]
+#[cfg(any(not(Py_3_11), PyPy))]
 pub(crate) use legacy_impl::*;

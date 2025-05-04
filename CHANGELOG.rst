@@ -61,6 +61,8 @@ Changelog
 * Added support for compiling against `aws-lc`_.
 * Parsing X.509 structures now more strictly enforces that ``Name`` structures
   do not have malformed ASN.1.
+* We now publish ``py311`` wheels which use the faster ``pyo3::buffer::PyBuffer``
+  interface which can significantly speed up operations using small buffers.
 
 .. _v44-0-3:
 

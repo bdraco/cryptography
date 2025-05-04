@@ -3,6 +3,8 @@
 // for complete details.
 
 use std::env;
+use std::path::Path;
+use std::process::Command;
 
 #[allow(clippy::unusual_byte_groupings)]
 fn main() {
@@ -10,6 +12,7 @@ fn main() {
         println!("{cfg}");
     }
 
+    let python = env::var("PYO3_PYTHON").unwrap_or_else(|_| "python3".to_string());
     let python_impl = run_python_script(
         &python,
         "import platform; print(platform.python_implementation(), end='')",
@@ -58,5 +61,30 @@ fn main() {
         for var in vars.split(',') {
             println!("cargo:rustc-cfg=CRYPTOGRAPHY_OSSLCONF=\"{var}\"");
         }
+    }
+}
+
+/// Run a python script using the specified interpreter binary.
+fn run_python_script(interpreter: impl AsRef<Path>, script: &str) -> Result<String, String> {
+    let interpreter = interpreter.as_ref();
+    let out = Command::new(interpreter)
+        .env("PYTHONIOENCODING", "utf-8")
+        .arg("-c")
+        .arg(script)
+        .output();
+
+    match out {
+        Err(err) => Err(format!(
+            "failed to run the Python interpreter at {}: {}",
+            interpreter.display(),
+            err
+        )),
+        Ok(ok) if !ok.status.success() => Err(format!(
+            "Python script failed: {}",
+            String::from_utf8(ok.stderr).expect("failed to parse Python script stderr as utf-8")
+        )),
+        Ok(ok) => Ok(
+            String::from_utf8(ok.stdout).expect("failed to parse Python script stdout as utf-8")
+        ),
     }
 }

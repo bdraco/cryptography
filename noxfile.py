@@ -31,10 +31,22 @@ def install(
 ) -> None:
     if verbose:
         args += ("-v",)
+    # Check for any --features= argument passed to nox
+    features_flag = []
+    features = [
+        arg for arg in session.posargs if arg.startswith("--features=")
+    ]
+    if features:
+        # Extract the feature after '='
+        feature_value = features[0].split("=")[1]
+        features_flag = [
+            f"--config-settings=build-args=--features={feature_value}"
+        ]
     session.install(
         "-c",
         "ci-constraints-requirements.txt",
         *args,
+        *features_flag,
         silent=False,
     )
 
@@ -232,18 +244,7 @@ def rust(session: nox.Session) -> None:
     # TODO: Ideally there'd be a pip flag to install just our dependencies,
     # but not install us.
     pyproject_data = load_pyproject_toml()
-    # Check for any --features= argument passed to nox
-    features_flag = []
-    features = [arg for arg in session.posargs if arg.startswith("features=")]
-    if features:
-        # Extract the feature after '='
-        feature_value = features[0].split("=")[1]
-        features_flag = [
-            f"--config-settings=build-args=--features={feature_value}"
-        ]
-    install(
-        session, *features_flag, *pyproject_data["build-system"]["requires"]
-    )
+    install(session, *pyproject_data["build-system"]["requires"])
 
     session.run("cargo", "fmt", "--all", "--", "--check", external=True)
     session.run(

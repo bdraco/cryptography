@@ -218,6 +218,7 @@ mod legacy_impl {
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
             let (bufobj, ptrval) = _extract_buffer_length(pyobj, true)?;
+
             let len = bufobj.len()?;
             let buf = if len == 0 {
                 &mut []

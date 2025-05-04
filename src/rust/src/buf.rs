@@ -17,23 +17,6 @@ mod pybuffer_impl {
         buf: &'p [u8],
     }
 
-    fn _extract_buffer_length(
-        pyobj: &pyo3::Bound<'_, pyo3::PyAny>,
-    ) -> pyo3::PyResult<PyBuffer<u8>> {
-        let buf = PyBuffer::<u8>::get(pyobj).map_err(|_| {
-            let errmsg = if pyobj.is_instance_of::<pyo3::types::PyString>() {
-                format!(
-                    "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
-                    pyobj.get_type()
-                )
-            } else {
-                format!("Cannot convert \"{}\" instance to a buffer.", pyobj.get_type())
-            };
-            pyo3::exceptions::PyTypeError::new_err(errmsg)
-        })?;
-        Ok(buf)
-    }
-
     impl<'a> CffiBuf<'a> {
         pub(crate) fn from_bytes(py: pyo3::Python<'a>, buf: &'a [u8]) -> Self {
             let py_bytes = PyBytes::new(py, buf);
@@ -62,7 +45,17 @@ mod pybuffer_impl {
 
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-            let bufobj = _extract_buffer_length(pyobj)?;
+            let bufobj = PyBuffer::<u8>::get(pyobj).map_err(|_| {
+                let errmsg = if pyobj.is_instance_of::<pyo3::types::PyString>() {
+                    format!(
+                        "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
+                        pyobj.get_type()
+                    )
+                } else {
+                    format!("Cannot convert \"{}\" instance to a buffer.", pyobj.get_type())
+                };
+                pyo3::exceptions::PyTypeError::new_err(errmsg)
+            })?;
             let len = pyobj.len()?;
             let buf = if len == 0 {
                 &[]

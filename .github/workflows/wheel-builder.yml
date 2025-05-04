@@ -211,7 +211,7 @@ jobs:
             # See https://github.com/pypa/cibuildwheel/blob/c8876b5c54a6c6b08de5d4b1586906b56203bd9e/cibuildwheel/macos.py#L257-L269
             # This will change in the future as we change the base Python we
             # build against
-            _PYTHON_HOST_PLATFORM: 'macosx-10.9-universal2'            
+            _PYTHON_HOST_PLATFORM: 'macosx-10.9-universal2'
           - VERSION: 'pypy-3.10'
             BIN_PATH: 'pypy3'
             DEPLOYMENT_TARGET: '10.13'

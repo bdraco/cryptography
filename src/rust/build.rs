@@ -10,6 +10,13 @@ fn main() {
         println!("{cfg}");
     }
 
+    let python_impl = run_python_script(
+        &python,
+        "import platform; print(platform.python_implementation(), end='')",
+    )
+    .unwrap();
+    println!("cargo:rustc-cfg=python_implementation=\"{python_impl}\"");
+
     if let Ok(version) = env::var("DEP_OPENSSL_VERSION_NUMBER") {
         let version = u64::from_str_radix(&version, 16).unwrap();
 

@@ -2,8 +2,6 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-// buf.readonly always returns false on PyPy, so we can't use it to
-// determine if the buffer is writable.
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
     use pyo3::buffer::PyBuffer;

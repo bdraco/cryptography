@@ -134,7 +134,9 @@ mod legacy_impl {
         let py = pyobj.py();
         let bufobj = if mutable {
             let kwargs = [(pyo3::intern!(py, "require_writable"), true)].into_py_dict(py)?;
-            types::FFI_FROM_BUFFER.get(py)?.call((pyobj,), Some(&kwargs))
+            types::FFI_FROM_BUFFER
+                .get(py)?
+                .call((pyobj,), Some(&kwargs))
         } else {
             types::FFI_FROM_BUFFER.get(py)?.call1((pyobj,))
         }

@@ -194,6 +194,19 @@ class TestChaCha20Poly1305:
         computed_pt2 = chacha2.decrypt(bytearray(nonce), ct2, ad)
         assert computed_pt2 == pt
 
+    def test_multidim_memoryview_fails(self, backend):
+        key = ChaCha20Poly1305.generate_key()
+        chacha = ChaCha20Poly1305(key)
+        pt = b"encrypt me"
+        ad = b"additional"
+        nonce = os.urandom(12)
+
+        pt_array = bytearray(pt)
+        pt_mv = memoryview(pt_array).cast('B', (3, 3))
+
+        # Verify that encryption fails with multi-dimensional buffer
+        with pytest.raises(TypeError):
+            chacha.encrypt(nonce, pt_mv, ad)
 
 @pytest.mark.skipif(
     not _aead_supported(AESCCM),

@@ -127,8 +127,9 @@ mod pybuffer_impl {
 
 #[cfg(not(Py_3_11))]
 mod ffi_impl {
-    use pyo3::types::PyAnyMethods;
+    use pyo3::types::{PyAnyMethods, IntoPyDict};
     use std::slice;
+    use create::types;
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,

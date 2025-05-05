@@ -6,10 +6,10 @@ use std::slice;
 
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
+    use super::{create_mut_slice_from_raw_parts, create_slice_from_raw_parts};
     use pyo3::buffer::PyBuffer;
     use pyo3::types::{PyAnyMethods, PyBytes};
     use std::os::raw;
-    use super::{create_slice_from_raw_parts, create_mut_slice_from_raw_parts};
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
@@ -102,10 +102,10 @@ mod pybuffer_impl {
 
 #[cfg(not(Py_3_11))]
 mod ffi_impl {
+    use super::{create_mut_slice_from_raw_parts, create_slice_from_raw_parts};
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};
     use std::slice;
-    use super::{create_slice_from_raw_parts, create_mut_slice_from_raw_parts};
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
@@ -201,7 +201,6 @@ mod ffi_impl {
         }
     }
 }
-
 
 // Common safety-critical functions extracted to improve readability and maintenance
 #[inline]

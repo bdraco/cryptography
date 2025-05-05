@@ -33,7 +33,6 @@ fn create_mut_slice_from_raw_parts<'a>(ptr: *mut u8, len: usize) -> &'a mut [u8]
 }
 
 // Common error message generation
-#[inline]
 fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny>) -> String {
     if pyobj.is_instance_of::<pyo3::types::PyString>() {
         format!(

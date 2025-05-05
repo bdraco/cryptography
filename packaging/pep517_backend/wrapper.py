@@ -5,7 +5,7 @@ MAX_MINOR_VERSION = 13  # Python 3.13 is latest supported version
 MAJOR = sys.version_info.major
 MINOR = min(sys.version_info.minor, MAX_MINOR_VERSION)
 
-os.environ["MATURIN_PEP517_ARGS"] = (
-    os.environ.get("MATURIN_PEP517_ARGS", "")
-    + f" --features=pyo3/abi3-py{MAJOR}{MINOR}"
-)
+current_args = os.environ.get("MATURIN_PEP517_ARGS", "")
+if "--features" not in current_args:
+    features_arg = f" --features=pyo3/abi3-py{MAJOR}{MINOR}"
+    os.environ["MATURIN_PEP517_ARGS"] = current_args + features_arg

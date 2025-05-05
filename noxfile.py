@@ -33,14 +33,16 @@ def install(
         args += ("-v",)
     # Check for any --features= argument passed to nox
     features_flag = []
-    features = [
-        arg for arg in session.posargs if arg.startswith("--features=")
+    feature_values = [
+        arg.split("=", 1)[1].strip("'\"")
+        for arg in session.posargs
+        if arg.startswith("--features=")
     ]
-    if features:
-        # Extract the feature after '='
-        feature_value = features[0].split("=")[1]
+    if feature_values:
         features_flag = [
-            f"--config-settings=build-args=--features={feature_value}"
+            "--config-settings="
+            "build-args="
+            f"--features={','.join(feature_values)}"
         ]
     session.install(
         "-c",

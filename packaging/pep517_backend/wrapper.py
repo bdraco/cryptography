@@ -1,15 +1,12 @@
 import sys
 from maturin import *  # Import everything from maturin
 
-MAX_MINOR_VERSION = 13  # Python 3.13 is latest supported version
-MAJOR = sys.version_info.major
-MINOR = min(sys.version_info.minor, MAX_MINOR_VERSION)
+# Latest supported Python version is 3.13
+MAJOR, MINOR = sys.version_info.major, min(sys.version_info.minor, 13)
 
 current_args = os.environ.get("MATURIN_PEP517_ARGS", "")
 if "--features" not in current_args:
-    # This is a thin wrapper around maturin to set the ABI3 feature flag
-    # for the current Python version so we use the limited ABI3 for the
-    # current Python version as maturin does not have a way to do
-    # this automatically.
+    # Add ABI3 feature flag for current Python version to use limited ABI3 for
+    # compatibility, since maturin can't set this automatically
     features_arg = f" --features=pyo3/abi3-py{MAJOR}{MINOR}"
     os.environ["MATURIN_PEP517_ARGS"] = current_args + features_arg

@@ -117,7 +117,7 @@ mod pybuffer_impl {
 
 #[cfg(not(Py_3_11))]
 mod ffi_impl {
-    use crate::buf::_extract_buffer_length;
+    use super::_extract_buffer_length;
     use pyo3::types::PyAnyMethods;
     use std::slice;
 

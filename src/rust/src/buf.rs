@@ -83,16 +83,16 @@ pub(crate) struct CffiBuf<'p> {
 impl<'a> CffiBuf<'a> {
     pub(crate) fn from_bytes(py: pyo3::Python<'a>, buf: &'a [u8]) -> Self {
         #[cfg(Py_3_11)]
-        let _bufobj = {
+        let bufobj = {
             let py_bytes = pyo3::types::PyBytes::new(py, buf);
             pyo3::buffer::PyBuffer::get(&py_bytes)
                 .expect("Cannot convert \"bytes\" instance to a buffer.")
         };
         #[cfg(not(Py_3_11))]
-        let _bufobj = py.None().into_bound(py);
+        let bufobj = py.None().into_bound(py);
         CffiBuf {
             pyobj: py.None().into_bound(py),
-            _bufobj: _bufobj,
+            _bufobj: bufobj,
             buf,
         }
     }

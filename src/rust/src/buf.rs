@@ -117,8 +117,8 @@ mod pybuffer_impl {
 
 #[cfg(not(Py_3_11))]
 mod ffi_impl {
-    use crate::types;
-    use pyo3::types::{IntoPyDict, PyAnyMethods};
+    use crate::buf::_extract_buffer_length;
+    use pyo3::types::PyAnyMethods;
     use std::slice;
 
     pub(crate) struct CffiBuf<'p> {

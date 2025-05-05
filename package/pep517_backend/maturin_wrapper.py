@@ -1,3 +1,9 @@
+"""Wrapper for maturin to build Python packages with PEP 517.
+
+Remove this once maturin supports features=pyo3/abi3=abi3-auto
+https://github.com/PyO3/maturin/issues/1894#issuecomment-2852639577
+"""
+
 import os
 import sys
 

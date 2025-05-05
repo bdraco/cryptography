@@ -1,4 +1,4 @@
-"""Wrapper for maturin to build Python packages with PEP 517.
+"""Wrapper for maturin to control --features flag for PEP 517 builds.
 
 Remove this once maturin supports features=pyo3/abi3-auto
 https://github.com/PyO3/maturin/issues/1894#issuecomment-2852639577

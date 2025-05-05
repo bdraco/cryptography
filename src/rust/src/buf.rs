@@ -2,6 +2,10 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
+#[cfg(not(Py_3_11))]
+use crate::types;
+#[cfg(not(Py_3_11))]
+use pyo3::types::IntoPyDict;
 use pyo3::types::PyAnyMethods;
 use std::slice;
 

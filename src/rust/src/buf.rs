@@ -90,7 +90,7 @@ mod pybuffer_impl {
             let buf = if len == 0 {
                 &[]
             } else {
-                // SAFETY: _extract_buffer_length ensures that we have a valid ptr
+                // SAFETY: pyo3::buffer::PyBuffer ensures that we have a valid ptr
                 // and length (and we ensure we meet slice's requirements for
                 // 0-length slices above), we're keeping pyobj alive which ensures
                 // the buffer is valid. But! There is no actually guarantee

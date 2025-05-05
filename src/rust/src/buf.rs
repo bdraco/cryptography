@@ -4,6 +4,50 @@
 
 use pyo3::types::PyAnyMethods;
 
+// Common safety-critical functions extracted to improve readability and maintenance
+#[inline]
+fn create_slice_from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    if len == 0 {
+        &[]
+    } else {
+        // SAFETY: The caller ensures that we have a valid ptr
+        // and length (and we ensure we meet slice's requirements for
+        // 0-length slices above), the caller keeps the source alive which ensures
+        // the buffer is valid. But! There is no actual guarantee
+        // against concurrent mutation. See
+        // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
+        // for details. This is the same as our cffi status quo ante, so
+        // we're doing an unsound thing and living with it.
+        unsafe { std::slice::from_raw_parts(ptr, len) }
+    }
+}
+
+#[inline]
+fn create_mut_slice_from_raw_parts<'a>(ptr: *mut u8, len: usize) -> &'a mut [u8] {
+    if len == 0 {
+        &mut []
+    } else {
+        // SAFETY: Same safety concerns as above
+        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
+    }
+}
+
+// Common error message generation
+#[inline]
+fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny>) -> String {
+    if pyobj.is_instance_of::<pyo3::types::PyString>() {
+        format!(
+            "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
+            pyobj.get_type()
+        )
+    } else {
+        format!(
+            "Cannot convert \"{}\" instance to a buffer.",
+            pyobj.get_type()
+        )
+    }
+}
+
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
     use super::{
@@ -190,50 +234,6 @@ mod ffi_impl {
                 buf,
             })
         }
-    }
-}
-
-// Common safety-critical functions extracted to improve readability and maintenance
-#[inline]
-fn create_slice_from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
-    if len == 0 {
-        &[]
-    } else {
-        // SAFETY: The caller ensures that we have a valid ptr
-        // and length (and we ensure we meet slice's requirements for
-        // 0-length slices above), the caller keeps the source alive which ensures
-        // the buffer is valid. But! There is no actual guarantee
-        // against concurrent mutation. See
-        // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-        // for details. This is the same as our cffi status quo ante, so
-        // we're doing an unsound thing and living with it.
-        unsafe { std::slice::from_raw_parts(ptr, len) }
-    }
-}
-
-#[inline]
-fn create_mut_slice_from_raw_parts<'a>(ptr: *mut u8, len: usize) -> &'a mut [u8] {
-    if len == 0 {
-        &mut []
-    } else {
-        // SAFETY: Same safety concerns as above
-        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
-    }
-}
-
-// Common error message generation
-#[inline]
-fn generate_non_convertible_buffer_error_msg(pyobj: &pyo3::Bound<'_, pyo3::PyAny>) -> String {
-    if pyobj.is_instance_of::<pyo3::types::PyString>() {
-        format!(
-            "Cannot convert \"{}\" instance to a buffer.\nDid you mean to pass a bytestring instead?",
-            pyobj.get_type()
-        )
-    } else {
-        format!(
-            "Cannot convert \"{}\" instance to a buffer.",
-            pyobj.get_type()
-        )
     }
 }
 

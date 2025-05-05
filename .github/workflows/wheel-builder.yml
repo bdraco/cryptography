@@ -308,6 +308,7 @@ jobs:
         PYTHON:
           - {VERSION: "3.11", "ABI_VERSION": "py37"}
           - {VERSION: "3.11", "ABI_VERSION": "py39"}
+          - {VERSION: "3.11", "ABI_VERSION": "py311"}
           - {VERSION: "pypy-3.10"}
           - {VERSION: "pypy-3.11"}
         exclude:

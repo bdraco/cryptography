@@ -87,8 +87,10 @@ mod pybuffer_impl {
                 pyo3::exceptions::PyTypeError::new_err(errmsg)
             })?;
             if bufobj.dimensions() != 1 {
-                return Err(pyo3::exceptions::PyTypeError::new_err("Only 1-dimensional byte buffers are supported."));
-            }            
+                return Err(pyo3::exceptions::PyTypeError::new_err(
+                    "Only 1-dimensional byte buffers are supported.",
+                ));
+            }
             let len = bufobj.len_bytes();
             let buf = if len == 0 {
                 &[]

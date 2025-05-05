@@ -50,11 +50,11 @@ jobs:
       - name: Create virtualenv (base)
         run: |
           python -m venv .venv-base
-          .venv-base/bin/pip install --config-settings="build-args=--features=pyo3/abi3-py311" -v -c ./cryptography-base/ci-constraints-requirements.txt "./cryptography-base[test]" ./cryptography-base/vectors/
+          .venv-base/bin/pip install -v -c ./cryptography-base/ci-constraints-requirements.txt "./cryptography-base[test]" ./cryptography-base/vectors/
       - name: Create virtualenv (PR)
         run: |
           python -m venv .venv-pr
-          .venv-pr/bin/pip install --config-settings="build-args=--features=pyo3/abi3-py311" -v -c ./cryptography-pr/ci-constraints-requirements.txt "./cryptography-pr[test]" ./cryptography-pr/vectors/
+          .venv-pr/bin/pip install -v -c ./cryptography-pr/ci-constraints-requirements.txt "./cryptography-pr[test]" ./cryptography-pr/vectors/
 
       - name: Run benchmarks (base)
         run: .venv-base/bin/pytest --benchmark-enable --benchmark-only ./cryptography-pr/tests/bench/ --benchmark-json=bench-base.json --x509-limbo-root=x509-limbo/

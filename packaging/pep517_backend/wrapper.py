@@ -3,7 +3,7 @@ from maturin import *  # Import everything from maturin
 
 MAX_MINOR_VERSION = 13  # Python 3.13 is latest supported version
 MAJOR = sys.version_info.major
-MINOR = max(sys.version_info.minor, MAX_MINOR_VERSION)
+MINOR = min(sys.version_info.minor, MAX_MINOR_VERSION)
 
 os.environ["MATURIN_PEP517_ARGS"] = (
     os.environ.get("MATURIN_PEP517_ARGS", "")

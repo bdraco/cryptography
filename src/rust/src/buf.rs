@@ -57,8 +57,8 @@ mod pybuffer_impl {
     use pyo3::types::PyBytes;
     use std::os::raw;
 
-    fn _extract_buffer_length<'p>(
-        pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
+    fn _extract_buffer_length(
+        pyobj: &pyo3::Bound<'_, pyo3::PyAny>,
         mutable: bool,
     ) -> pyo3::PyResult<(PyBuffer<u8>, *mut raw::c_void, usize)> {
         let bufobj = PyBuffer::<u8>::get(pyobj).map_err(|_| {

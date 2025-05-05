@@ -1,5 +1,7 @@
+import os
 import sys
-from maturin import *  # Import everything from maturin
+
+from maturin import *  # Import everything from maturin  # noqa: F403
 
 # Latest supported Python version is 3.13
 MAJOR, MINOR = sys.version_info.major, min(sys.version_info.minor, 13)

@@ -2,12 +2,14 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
+use std::slice;
+
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
     use pyo3::buffer::PyBuffer;
     use pyo3::types::{PyAnyMethods, PyBytes};
     use std::os::raw;
-    use std::slice;
+    use super::{create_slice_from_raw_parts, create_mut_slice_from_raw_parts};
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
@@ -64,20 +66,7 @@ mod pybuffer_impl {
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
             let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, false)?;
-            let buf = if len == 0 {
-                &[]
-            } else {
-                // SAFETY: pyo3::buffer::PyBuffer ensures that we have a valid ptr
-                // and length (and we ensure we meet slice's requirements for
-                // 0-length slices above), we're keeping pyobj alive which ensures
-                // the buffer is valid. But! There is no actually guarantee
-                // against concurrent mutation. See
-                // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-                // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.
-                unsafe { slice::from_raw_parts(ptrval as *const u8, len) }
-            };
-
+            let buf = create_slice_from_raw_parts(ptrval as *mut u8, len);
             Ok(CffiBuf {
                 pyobj: pyobj.clone(),
                 _bufobj: bufobj,
@@ -101,20 +90,7 @@ mod pybuffer_impl {
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
             let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, true)?;
-            let buf = if len == 0 {
-                &mut []
-            } else {
-                // SAFETY: pyo3::buffer::PyBuffer ensures that we have a valid ptr
-                // and length (and we ensure we meet slice's requirements for
-                // 0-length slices above), we're keeping pyobj alive which ensures
-                // the buffer is valid. But! There is no actually guarantee
-                // against concurrent mutation. See
-                // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-                // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.
-                unsafe { slice::from_raw_parts_mut(ptrval as *mut u8, len) }
-            };
-
+            let buf = create_mut_slice_from_raw_parts(ptrval as *mut u8, len);
             Ok(CffiMutBuf {
                 _pyobj: pyobj.clone(),
                 _bufobj: bufobj,
@@ -129,6 +105,7 @@ mod ffi_impl {
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};
     use std::slice;
+    use super::{create_slice_from_raw_parts, create_mut_slice_from_raw_parts};
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
@@ -190,20 +167,7 @@ mod ffi_impl {
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
             let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, false)?;
-            let buf = if len == 0 {
-                &[]
-            } else {
-                // SAFETY: _extract_buffer_length ensures that we have a valid ptr
-                // and length (and we ensure we meet slice's requirements for
-                // 0-length slices above), we're keeping pyobj alive which ensures
-                // the buffer is valid. But! There is no actually guarantee
-                // against concurrent mutation. See
-                // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-                // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.
-                unsafe { slice::from_raw_parts(ptrval as *const u8, len) }
-            };
-
+            let buf = create_slice_from_raw_parts(ptrval as *mut u8, len);
             Ok(CffiBuf {
                 pyobj: pyobj.clone(),
                 _bufobj: bufobj,
@@ -227,19 +191,7 @@ mod ffi_impl {
     impl<'a> pyo3::conversion::FromPyObject<'a> for CffiMutBuf<'a> {
         fn extract_bound(pyobj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
             let (bufobj, ptrval, len) = _extract_buffer_length(pyobj, true)?;
-            let buf = if len == 0 {
-                &mut []
-            } else {
-                // SAFETY: _extract_buffer_length ensures that we have a valid ptr
-                // and length (and we ensure we meet slice's requirements for
-                // 0-length slices above), we're keeping pyobj alive which ensures
-                // the buffer is valid. But! There is no actually guarantee
-                // against concurrent mutation. See
-                // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
-                // for details. This is the same as our cffi status quo ante, so
-                // we're doing an unsound thing and living with it.
-                unsafe { slice::from_raw_parts_mut(ptrval as *mut u8, len) }
-            };
+            let buf = create_mut_slice_from_raw_parts(ptrval as *mut u8, len);
 
             Ok(CffiMutBuf {
                 _pyobj: pyobj.clone(),
@@ -247,6 +199,35 @@ mod ffi_impl {
                 buf,
             })
         }
+    }
+}
+
+
+// Common safety-critical functions extracted to improve readability and maintenance
+#[inline]
+fn create_slice_from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    if len == 0 {
+        &[]
+    } else {
+        // SAFETY: The caller ensures that we have a valid ptr
+        // and length (and we ensure we meet slice's requirements for
+        // 0-length slices above), the caller keeps the source alive which ensures
+        // the buffer is valid. But! There is no actual guarantee
+        // against concurrent mutation. See
+        // https://alexgaynor.net/2022/oct/23/buffers-on-the-edge/
+        // for details. This is the same as our cffi status quo ante, so
+        // we're doing an unsound thing and living with it.
+        unsafe { std::slice::from_raw_parts(ptr, len) }
+    }
+}
+
+#[inline]
+fn create_mut_slice_from_raw_parts<'a>(ptr: *mut u8, len: usize) -> &'a mut [u8] {
+    if len == 0 {
+        &mut []
+    } else {
+        // SAFETY: Same safety concerns as above
+        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
     }
 }
 

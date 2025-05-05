@@ -56,12 +56,7 @@ mod pybuffer_impl {
         pub(crate) fn from_bytes(py: pyo3::Python<'a>, buf: &'a [u8]) -> Self {
             let py_bytes = PyBytes::new(py, buf);
             let pybuffer = PyBuffer::<u8>::get(&py_bytes)
-                .map_err(|_| {
-                    pyo3::exceptions::PyTypeError::new_err(
-                        "Cannot convert \"bytes\" instance to a buffer.",
-                    )
-                })
-                .unwrap();
+                .expect("Cannot convert \"bytes\" instance to a buffer.");
             CffiBuf {
                 pyobj: py.None().into_bound(py),
                 _bufobj: pybuffer,

@@ -197,12 +197,12 @@ class TestChaCha20Poly1305:
     def test_multidim_memoryview_fails(self, backend):
         key = ChaCha20Poly1305.generate_key()
         chacha = ChaCha20Poly1305(key)
-        pt = b"encrypt me"
+        pt = b"foursquare"  # 10 bytes for a 2x5 grid
         ad = b"additional"
         nonce = os.urandom(12)
 
         pt_array = bytearray(pt)
-        pt_mv = memoryview(pt_array).cast('B', (3, 3))
+        pt_mv = memoryview(pt_array).cast('B', (2, 5))
 
         # Verify that encryption fails with multi-dimensional buffer
         with pytest.raises(TypeError):

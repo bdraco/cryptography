@@ -2,14 +2,13 @@
 // 2.0, and the BSD License. See the LICENSE file in the root of this repository
 // for complete details.
 
-use std::slice;
-
 #[cfg(Py_3_11)]
 mod pybuffer_impl {
     use super::{create_mut_slice_from_raw_parts, create_slice_from_raw_parts};
     use pyo3::buffer::PyBuffer;
     use pyo3::types::{PyAnyMethods, PyBytes};
     use std::os::raw;
+    use std::slice;
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,

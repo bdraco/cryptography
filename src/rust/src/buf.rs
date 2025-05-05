@@ -8,7 +8,6 @@ mod pybuffer_impl {
     use pyo3::buffer::PyBuffer;
     use pyo3::types::{PyAnyMethods, PyBytes};
     use std::os::raw;
-    use std::slice;
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
@@ -104,7 +103,6 @@ mod ffi_impl {
     use super::{create_mut_slice_from_raw_parts, create_slice_from_raw_parts};
     use crate::types;
     use pyo3::types::{IntoPyDict, PyAnyMethods};
-    use std::slice;
 
     fn _extract_buffer_length<'p>(
         pyobj: &pyo3::Bound<'p, pyo3::PyAny>,
